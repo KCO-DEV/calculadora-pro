@@ -1,103 +1,94 @@
 const display = document.getElementById("display");
 const buttons = document.querySelectorAll(".buttons button");
-const calc = document.getElementById("calculator");
 const historyList = document.getElementById("historyList");
 const themeToggle = document.getElementById("themeToggle");
 
 let expression = "";
-let history = [];
 
-/* ===== SOM ===== */
-const clickSound = new Audio("click.mp3");
-
-/* ===== FUNÇÃO SOM ===== */
+/* ========= SOM ========= */
 function playSound(){
-  clickSound.currentTime = 0;
-  clickSound.play();
+  const audio = new Audio("https://cdn.pixabay.com/audio/2022/03/15/audio_click.mp3");
+  audio.volume = 0.2;
+  audio.play();
 }
 
-/* ===== ATUALIZA DISPLAY ===== */
-function updateDisplay(value){
-  display.innerText = value || "0";
+/* ========= CALC ========= */
+function updateDisplay(){
+  display.textContent = expression || "0";
 }
 
-/* ===== ADICIONAR HISTÓRICO ===== */
-function addHistory(item){
-  history.unshift(item);
-  history = history.slice(0,10);
+function calculate(){
+  try{
+    const result = eval(
+      expression
+        .replace(/×/g,"*")
+        .replace(/÷/g,"/")
+        .replace(/−/g,"-")
+    );
 
-  historyList.innerHTML = "";
-  history.forEach(h=>{
-    const li = document.createElement("li");
-    li.textContent = h;
-    historyList.appendChild(li);
-  });
+    addHistory(expression + " = " + result);
+    expression = result.toString();
+  }catch{
+    expression = "Erro";
+  }
+  updateDisplay();
 }
 
-/* ===== BOTÕES ===== */
+function addHistory(text){
+  const li = document.createElement("li");
+  li.textContent = text;
+  historyList.prepend(li);
+}
+
+/* ========= CLIQUES ========= */
 buttons.forEach(btn=>{
   btn.addEventListener("click", ()=>{
-    const value = btn.innerText;
     playSound();
 
-    if(value === "C"){
-      expression = "";
-      updateDisplay("0");
+    const val = btn.textContent;
+
+    if(val==="C"){
+      expression="";
+    }
+    else if(val==="="){
+      calculate();
       return;
     }
-
-    if(value === "="){
-      try{
-        const result = eval(expression);
-        addHistory(`${expression} = ${result}`);
-        expression = result.toString();
-        updateDisplay(expression);
-      }catch{
-        updateDisplay("Erro");
-        expression="";
-      }
-      return;
+    else{
+      expression+=val;
     }
 
-    expression += value;
-    updateDisplay(expression);
+    updateDisplay();
   });
 });
 
-/* ===== TECLADO ===== */
-document.addEventListener("keydown", (e)=>{
-  const key = e.key;
-
-  if("0123456789+-*/().".includes(key)){
-    expression += key;
-    updateDisplay(expression);
-    playSound();
+/* ========= TECLADO ========= */
+document.addEventListener("keydown",(e)=>{
+  if("0123456789.+-*/()".includes(e.key)){
+    expression+=e.key;
   }
-
-  if(key === "Enter"){
-    try{
-      const result = eval(expression);
-      addHistory(`${expression} = ${result}`);
-      expression = result.toString();
-      updateDisplay(expression);
-    }catch{
-      updateDisplay("Erro");
-    }
-  }
-
-  if(key === "Backspace"){
-    expression = expression.slice(0,-1);
-    updateDisplay(expression);
-  }
+  if(e.key==="Enter") calculate();
+  if(e.key==="Backspace") expression=expression.slice(0,-1);
+  updateDisplay();
 });
 
-/* ===== DRAG + TOUCH ===== */
-let isDragging=false, offsetX=0, offsetY=0;
+/* ========= TEMA ========= */
+themeToggle.onclick=()=>{
+  document.body.classList.toggle("dark");
+  themeToggle.textContent =
+    document.body.classList.contains("dark") ? "☀️" : "🌙";
+};
+
+/* ========= ARRASTAR (MOUSE + TOUCH) ========= */
+const calc = document.getElementById("calculator");
+const dragArea = document.getElementById("dragArea");
+
+let offsetX, offsetY, isDragging=false;
 
 function startDrag(x,y){
   isDragging=true;
-  offsetX=x-calc.offsetLeft;
-  offsetY=y-calc.offsetTop;
+  offsetX = x - calc.offsetLeft;
+  offsetY = y - calc.offsetTop;
 }
 
 function moveDrag(x,y){
@@ -106,26 +97,18 @@ function moveDrag(x,y){
   calc.style.top = y-offsetY+"px";
 }
 
-function stopDrag(){ isDragging=false; }
+dragArea.addEventListener("mousedown",e=>startDrag(e.clientX,e.clientY));
+document.addEventListener("mousemove",e=>moveDrag(e.clientX,e.clientY));
+document.addEventListener("mouseup",()=>isDragging=false);
 
-calc.addEventListener("mousedown", e=>startDrag(e.clientX,e.clientY));
-document.addEventListener("mousemove", e=>moveDrag(e.clientX,e.clientY));
-document.addEventListener("mouseup", stopDrag);
-
-calc.addEventListener("touchstart", e=>{
+dragArea.addEventListener("touchstart",e=>{
   const t=e.touches[0];
   startDrag(t.clientX,t.clientY);
 });
 
-document.addEventListener("touchmove", e=>{
+document.addEventListener("touchmove",e=>{
   const t=e.touches[0];
   moveDrag(t.clientX,t.clientY);
 });
 
-document.addEventListener("touchend", stopDrag);
-
-/* ===== TEMA ===== */
-themeToggle.addEventListener("click", ()=>{
-  calc.classList.toggle("light");
-  themeToggle.innerText = calc.classList.contains("light") ? "☀️" : "🌙";
-});
+document.addEventListener("touchend",()=>isDragging=false);
